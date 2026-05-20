@@ -26,23 +26,21 @@ function Points() {
 function CameraController({ pose }) {
   const { camera } = useThree();
 
-  const defaultPos = useRef(new THREE.Vector3(0, 0, 5));
-  const targetPos = useRef(new THREE.Vector3(0, 0, 5));
+  const target = useRef(new THREE.Vector3(0, 0, 5));
 
   useFrame(() => {
     if (pose) {
-      // normalize (0–1 → -1–1)
       const x = (pose.x - 0.5) * 2;
       const y = (pose.y - 0.5) * 2;
 
-      targetPos.current.x = x * 2;
-      targetPos.current.y = -y * 2;
-      targetPos.current.z = 5;
+      target.current.x = x * 0.6;
+      target.current.y = -y * 0.6;
+      target.current.z = 5;
     } else {
-      targetPos.current.copy(defaultPos.current);
+      target.current.set(0, 0, 5);
     }
 
-    camera.position.lerp(targetPos.current, 0.05);
+    camera.position.lerp(target.current, 0.08);
     camera.lookAt(0, 0, 0);
   });
 
