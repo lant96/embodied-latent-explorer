@@ -1,122 +1,108 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
+import * as THREE from "three";
+import { generatePoints } from "./data/points";
+import { usePose } from "./hooks/usePose";
+import { useRef, useState } from "react";
 
-function App() {
-  const [count, setCount] = useState(0)
+/* -------------------------
+   POINT CLOUD
+--------------------------*/
+function Points() {
+  const points = generatePoints(500);
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    <points>
+      <bufferGeometry attach="geometry" {...geometry} />
+      <pointsMaterial color="white" size={0.05} />
+    </points>
+  );
 }
 
-export default App
+/* -------------------------
+   CAMERA CONTROLLER
+--------------------------*/
+function CameraController({ pose }) {
+  const { camera } = useThree();
+
+  const defaultPos = useRef(new THREE.Vector3(0, 0, 5));
+  const targetPos = useRef(new THREE.Vector3(0, 0, 5));
+
+  useFrame(() => {
+    if (pose) {
+      // normalize (0–1 → -1–1)
+      const x = (pose.x - 0.5) * 2;
+      const y = (pose.y - 0.5) * 2;
+
+      targetPos.current.x = x * 2;
+      targetPos.current.y = -y * 2;
+      targetPos.current.z = 5;
+    } else {
+      targetPos.current.copy(defaultPos.current);
+    }
+
+    camera.position.lerp(targetPos.current, 0.05);
+    camera.lookAt(0, 0, 0);
+  });
+
+  return null;
+}
+
+/* -------------------------
+   UI (DEBUG + RESEARCH FEEDBACK)
+--------------------------*/
+function UI({ pose }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 10,
+        left: 10,
+        color: "white",
+        fontFamily: "sans-serif",
+        fontSize: "12px",
+        zIndex: 10,
+      }}
+    >
+      <div><b>Embodied Latent Explorer</b></div>
+      <div>Move your body to navigate</div>
+
+      <hr />
+
+      <div>Pose X: {pose?.x?.toFixed(3) ?? "..."}</div>
+      <div>Pose Y: {pose?.y?.toFixed(3) ?? "..."}</div>
+    </div>
+  );
+}
+
+/* -------------------------
+   MAIN APP
+--------------------------*/
+export default function App() {
+  const poseRef = useRef(null);
+  const [pose, setPose] = useState(null);
+
+  // receive pose updates
+  usePose((data) => {
+    poseRef.current = data;
+    setPose(data);
+  });
+
+  return (
+    <div style={{ width: "100vw", height: "100vh", background: "black" }}>
+      <UI pose={pose} />
+
+      <Canvas camera={{ position: [0, 0, 5], fov: 60 }}>
+        <ambientLight intensity={0.5} />
+
+        <Points />
+
+        <CameraController pose={poseRef.current} />
+
+        {/* optional manual debug control */}
+        <OrbitControls />
+      </Canvas>
+    </div>
+  );
+}
