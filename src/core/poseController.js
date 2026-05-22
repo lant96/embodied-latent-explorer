@@ -3,19 +3,17 @@ import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
 let poseLandmarker;
 let video;
 
-// ----------------------------
-// STATE
-// ----------------------------
+// Calibration baseline
 let baseX = null;
 let baseY = null;
 
-let prevX = null;
-let prevY = null;
+// Dead zone: suppresses micro-jitter around neutral stance
+const DEAD_ZONE = 0.03;
 
-const DEAD_ZONE = 0.025;
-const MIN_INTERVAL = 33; // ~30fps cap
-
-let lastTime = 0;
+const SMOOTHING = 0.3;
+let smoothX = 0;
+let smoothY = 0;
+let lastValidPose = { x: 0, y: 0 };
 
 export async function initPose(onUpdate) {
   const vision = await FilesetResolver.forVisionTasks(
@@ -28,85 +26,62 @@ export async function initPose(onUpdate) {
         "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task",
     },
     runningMode: "VIDEO",
+    numPoses: 1,
   });
 
   video = document.createElement("video");
   video.autoplay = true;
   video.playsInline = true;
+  video.muted = true;
 
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: true,
-  });
-
+  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
   video.srcObject = stream;
 
-  // FIX: safe video start (prevents AbortError)
   video.onloadedmetadata = async () => {
     try {
       await video.play();
     } catch (e) {
-      console.warn("Video play error:", e);
+      console.warn("Video play failed:", e);
     }
 
     requestAnimationFrame(loop);
   };
 
   function loop() {
-    if (!poseLandmarker || !video) {
-      requestAnimationFrame(loop);
-      return;
-    }
+    requestAnimationFrame(loop);
 
-    // ----------------------------
-    // FRAME RATE LIMIT (important for stability)
-    // ----------------------------
-    const now = performance.now();
-    if (now - lastTime < MIN_INTERVAL) {
-      requestAnimationFrame(loop);
-      return;
-    }
-    lastTime = now;
+    if (!poseLandmarker || !video) return;
 
-    // ensure valid frame
-    if (!video.videoWidth || !video.videoHeight) {
-      requestAnimationFrame(loop);
-      return;
-    }
+    if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
 
     let result;
 
     try {
-      result = poseLandmarker.detectForVideo(video, now);
+      result = poseLandmarker.detectForVideo(video, performance.now());
     } catch (err) {
-      console.warn("Pose error:", err);
-      requestAnimationFrame(loop);
+      console.warn("Pose detection error:", err);
+      onUpdate(lastValidPose);
       return;
     }
 
     if (!result?.landmarks?.length) {
-      requestAnimationFrame(loop);
+      onUpdate(lastValidPose);
       return;
     }
 
     const lm = result.landmarks[0];
-
     const leftShoulder = lm[11];
     const rightShoulder = lm[12];
 
     if (!leftShoulder || !rightShoulder) {
-      requestAnimationFrame(loop);
+      onUpdate(lastValidPose);
       return;
     }
 
-    // ----------------------------
-    // STABLE BODY CENTER
-    // ----------------------------
     const centerX = (leftShoulder.x + rightShoulder.x) / 2;
     const centerY = (leftShoulder.y + rightShoulder.y) / 2;
 
-    // ----------------------------
-    // CALIBRATION (neutral stance)
-    // ----------------------------
+    // Calibration
     if (baseX === null || baseY === null) {
       baseX = centerX;
       baseY = centerY;
@@ -115,38 +90,28 @@ export async function initPose(onUpdate) {
     let dx = centerX - baseX;
     let dy = centerY - baseY;
 
-    // ----------------------------
-    // DEAD ZONE (removes micro jitter)
-    // ----------------------------
-    if (Math.abs(dx) < DEAD_ZONE) dx = 0;
-    if (Math.abs(dy) < DEAD_ZONE) dy = 0;
+    smoothX = SMOOTHING * dx + (1 - SMOOTHING) * smoothX;
+    smoothY = SMOOTHING * dy + (1 - SMOOTHING) * smoothY;
 
-    // ----------------------------
-    // MOTION FILTER (core stability fix)
-    // ----------------------------
-    if (prevX === null || prevY === null) {
-      prevX = dx;
-      prevY = dy;
-    }
 
-    const vx = dx - prevX;
-    const vy = dy - prevY;
+    const finalX = Math.abs(smoothX) < DEAD_ZONE ? 0 : smoothX;
+    const finalY = Math.abs(smoothY) < DEAD_ZONE ? 0 : smoothY;
 
-    prevX = dx;
-    prevY = dy;
+    const output = { x: finalX, y: finalY };
 
-    // damping (reduces noise amplification)
-    const filteredX = vx * 0.8;
-    const filteredY = vy * 0.8;
-
-    // ----------------------------
-    // OUTPUT
-    // ----------------------------
-    onUpdate({
-      x: filteredX,
-      y: filteredY,
-    });
-
-    requestAnimationFrame(loop);
+    lastValidPose = output;
+    onUpdate(output);
   }
+}
+
+export function getVideoElement() {
+  return video;
+}
+
+// Reset calibration baseline
+export function recalibrate() {
+  baseX = null;
+  baseY = null;
+  smoothX = 0;
+  smoothY = 0;
 }

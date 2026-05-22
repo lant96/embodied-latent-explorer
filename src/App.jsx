@@ -1,104 +1,52 @@
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import * as THREE from "three";
-import { generatePoints } from "./data/points";
-import { usePose } from "./hooks/usePose";
 import { useRef, useState } from "react";
 
-/* -------------------------
-   POINT CLOUD
---------------------------*/
-function Points() {
-  const points = generatePoints(500);
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+import Balls from "./components/Points";
+import CameraController from "./components/CameraController";
+import UI from "./components/UI";
 
-  return (
-    <points>
-      <bufferGeometry attach="geometry" {...geometry} />
-      <pointsMaterial color="white" size={0.05} />
-    </points>
-  );
-}
+import { usePose } from "./hooks/usePose";
 
-/* -------------------------
-   CAMERA CONTROLLER
---------------------------*/
-function CameraController({ pose }) {
-  const { camera } = useThree();
-
-  const target = useRef(new THREE.Vector3(0, 0, 5));
-
-  useFrame(() => {
-    if (pose) {
-      const x = (pose.x - 0.5) * 2;
-      const y = (pose.y - 0.5) * 2;
-
-      target.current.x = x * 0.6;
-      target.current.y = -y * 0.6;
-      target.current.z = 5;
-    } else {
-      target.current.set(0, 0, 5);
-    }
-
-    camera.position.lerp(target.current, 0.08);
-    camera.lookAt(0, 0, 0);
-  });
-
-  return null;
-}
-
-/* -------------------------
-   UI (DEBUG + RESEARCH FEEDBACK)
---------------------------*/
-function UI({ pose }) {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        top: 10,
-        left: 10,
-        color: "white",
-        fontFamily: "sans-serif",
-        fontSize: "12px",
-        zIndex: 10,
-      }}
-    >
-      <div><b>Embodied Latent Explorer</b></div>
-      <div>Move your body to navigate</div>
-
-      <hr />
-
-      <div>Pose X: {pose?.x?.toFixed(3) ?? "..."}</div>
-      <div>Pose Y: {pose?.y?.toFixed(3) ?? "..."}</div>
-    </div>
-  );
-}
-
-/* -------------------------
-   MAIN APP
---------------------------*/
 export default function App() {
   const poseRef = useRef(null);
   const [pose, setPose] = useState(null);
 
-  // receive pose updates
   usePose((data) => {
     poseRef.current = data;
     setPose(data);
   });
 
   return (
-    <div style={{ width: "100vw", height: "100vh", background: "black" }}>
+    <div style={{ width: "100vw", height: "100vh", background: "#f0ebe0" }}>
       <UI pose={pose} />
 
-      <Canvas camera={{ position: [0, 0, 5], fov: 60 }}>
-        <ambientLight intensity={0.5} />
+      <Canvas camera={{ position: [0, 0, 6], fov: 55 }} shadows>
+        
+        <color attach="background" args={["#f0ebe0"]} />
+        <fog attach="fog" args={["#f0ebe0", 8, 22]} />
+        <ambientLight intensity={1.5} color="#fff8ef" />
+        <directionalLight
+          position={[7, 9, 4]}
+          intensity={1.6}
+          color="#ffe8c0"
+          castShadow
+        />
 
-        <Points />
+        <directionalLight
+          position={[-4, -3, -2]}
+          intensity={0.4}
+          color="#d4c8bd"
+        />
 
+        <directionalLight
+          position={[0, -1, -5]}
+          intensity={0.2}
+          color="#f5ede0"
+        />
+
+        <Balls />
         <CameraController pose={poseRef.current} />
-
-        {/* optional manual debug control */}
         <OrbitControls />
       </Canvas>
     </div>

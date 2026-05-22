@@ -1,16 +1,104 @@
-# React + Vite
+# Embodied Latent Explorer
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A web-based HCI prototype that uses real-time body pose to navigate a 3D abstract data space. Lean left or right to shift perspective; lean forward and back for vertical drift. No mouse, no keyboard — just posture.
 
-Currently, two official plugins are available:
+**[Live Demo](#)** · Built with React, Three.js, MediaPipe
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## What it is
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+An interaction design experiment asking:
 
-## Expanding the ESLint configuration
+> **Can the body serve as a natural interface for navigating abstract, high-dimensional data spaces?**
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+The scene is a stand-in for a latent space — the kind of abstract, high-dimensional structure that underlies ML representations. The interaction maps physical lean to camera movement, treating body posture as *navigational intent* rather than a joystick input.
+
+---
+
+## How it works
+
+**Lean left / right** → zone-based horizontal navigation (LEFT · CENTER · RIGHT)  
+**Vertical body movement** → continuous vertical camera shift (screen-space displacement of torso position)
+
+The horizontal axis uses a zone model with hysteresis rather than continuous tracking — a deliberate choice. Real bodies are never perfectly still, and snapping between discrete zones is more stable and less fatiguing than proportional control at this signal quality.
+
+Note: vertical movement is computed from 2D pose estimation (shoulder midpoint in image space), not true 3D depth estimation.
+
+### Signal pipeline
+
+```
+Webcam → MediaPipe PoseLandmarker → Shoulder midpoint → Baseline delta
+  → EMA smoothing (α = 0.3) → Dead zone → Zone FSM → Camera lerp
+```
+
+The shoulder midpoint (not hands or face) was chosen for stability: the torso expresses lean more clearly than the extremities, and requires no sustained arm effort.
+
+---
+
+## Architecture
+
+```
+src/
+├── components/
+│   ├── CameraController.jsx  — Zone FSM + camera lerp
+│   ├── Points.jsx            — Instanced 3D objects, botanical colour palette
+│   └── UI.jsx                — Status panel + live webcam preview
+├── core/
+│   └── poseController.js     — MediaPipe pipeline, EMA, auto-calibration
+├── hooks/
+│   └── usePose.js            — Stable one-time init (ref pattern)
+└── App.jsx                   — Canvas, lighting, composition
+```
+
+A few intentional design decisions worth noting:
+
+- **Pose processing is vanilla JS**, isolated from React — the signal pipeline is independently testable and swappable
+- **Camera lerp is deliberately slow** (`t = 0.055`) — inertia is a design value, not a performance constraint
+- **Webcam preview polls for the video element** rather than assuming it exists on mount, since MediaPipe init is async
+
+---
+
+## Stack
+
+React · Vite · Three.js (`@react-three/fiber`) · MediaPipe Tasks Vision · Zustand
+
+No backend. Runs entirely in the browser.
+
+---
+
+## Running locally
+
+```bash
+npm install
+npm run dev
+```
+
+Requires Chrome and webcam access. On first load, sit or stand in frame — the first valid pose auto-calibrates as your neutral. Use **↺ Recalibrate** if you reposition.
+
+---
+
+## Limitations & next steps
+
+This is a research prototype, not a finished product. Known constraints:
+
+- Z-axis (depth/zoom) is not yet body-controlled
+- MediaPipe performs better in Chrome than Firefox
+- The object field is unstructured — a natural next step is replacing it with real embedding projections (e.g. UMAP) to make navigation semantically meaningful
+- No multi-user support
+
+---
+
+## Research framing
+
+The zone model draws on Fitts' Law and motor noise tolerance. The shoulder-based tracking reflects proximal interaction design. The warm botanical palette is a deliberate departure from the clinical aesthetic of most data visualisation — part of a broader question about whether the register of a space affects how users explore it.
+
+Key references: Merleau-Ponty (1945), Gibson (1979), Dourish (2001), Varela et al. (1991).
+
+---
+
+## Author
+
+Athanasia Lantouri
+MSc in Data Science and Machine Learning 
+[ath.lantouri@gmai.com]
