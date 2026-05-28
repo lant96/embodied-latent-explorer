@@ -89,11 +89,18 @@ This is a research prototype, not a finished product. Known constraints:
 
 ---
 
-## Research framing
+## Future directions
 
-The zone model draws on Fitts' Law and motor noise tolerance. The shoulder-based tracking reflects proximal interaction design. The warm botanical palette is a deliberate departure from the clinical aesthetic of most data visualisation — part of a broader question about whether the register of a space affects how users explore it.
+Several extensions are planned for future iterations of the prototype:
 
-Key references: Merleau-Ponty (1945), Gibson (1979), Dourish (2001), Varela et al. (1991).
+- Depth-aware navigation
+Incorporating additional body landmarks and temporal signals to enable body-controlled Z-axis navigation.
+- Semantic latent spaces
+Replacing the random object field with actual embedding projections (e.g. UMAP/t-SNE representations of image or text datasets) to support meaningful spatial exploration.
+- Learned interaction models
+Exploring lightweight machine learning approaches for adaptive pose interpretation, temporal motion modelling, and user-specific calibration.
+- Embodied interaction studies
+Comparing discrete zone-based navigation against continuous control models in terms of stability, fatigue, learnability, and perceived embodiment.
 
 ---
 
