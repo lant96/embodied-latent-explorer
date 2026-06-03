@@ -3,7 +3,7 @@
 A web-based HCI prototype that uses real-time body pose to navigate a 3D abstract data space. Lean left or right to shift perspective; lean forward and back for vertical drift. No mouse, no keyboard — just posture.
 
 Built with React, Three.js, MediaPipe
-[Live Demo][https://embodied-latent-explorer.vercel.app/]
+🔗 **Live demo:** [https://embodied-latent-explorer.vercel.app/]
 
 ---
 
