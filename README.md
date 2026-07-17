@@ -1,113 +1,125 @@
 # Embodied Latent Explorer
 
-A web-based HCI prototype that uses real-time body pose to navigate a 3D abstract data space. Lean left or right to shift perspective; lean forward and back for vertical drift. No mouse, no keyboard — just posture.
+Embodied Latent Explorer is a browser-based human-computer interaction prototype that investigates body movement as a natural interface for navigating abstract three-dimensional data spaces.
 
-Built with React, Three.js, MediaPipe
+**Research Question**
 
-🔗 **Live demo:** [https://embodied-latent-explorer.vercel.app/]
-
----
-
-## What it is
-
-An interaction design experiment asking:
-
-> **Can the body serve as a natural interface for navigating abstract, high-dimensional data spaces?**
-
-The scene is a stand-in for a latent space, the kind of abstract, high-dimensional structure that underlies ML representations. The interaction maps physical lean to camera movement, treating body posture as *navigational intent* rather than a joystick input.
+> Can body movement provide an intuitive and expressive interface for exploring abstract representations without relying on traditional input devices?
 
 ---
 
-## How it works
+## Overview
 
-**Lean left / right** → zone-based horizontal navigation (LEFT · CENTER · RIGHT)  
-**Vertical body movement** → continuous vertical camera shift (screen-space displacement of torso position)
+Most visualisation systems depend on a mouse, keyboard, or touch interface. This project explores an alternative interaction paradigm in which body posture becomes the primary navigation mechanism.
 
-The horizontal axis uses a zone model with hysteresis rather than continuous tracking, a deliberate choice. Real bodies are never perfectly still, and snapping between discrete zones is more stable and less fatiguing than proportional control at this signal quality.
+Using real-time pose estimation, upper-body movement is mapped to camera motion within a three-dimensional scene representing an abstract latent space. Rather than treating the body as a replacement for a joystick, the prototype investigates whether natural posture can communicate navigational intent.
 
-Note: vertical movement is computed from 2D pose estimation (shoulder midpoint in image space), not true 3D depth estimation.
+Although the current environment contains abstract objects, the interaction model is intended as a foundation for future applications involving machine-learning embeddings, scientific visualisation, and embodied exploration of high-dimensional data.
 
-### Signal pipeline
+---
+
+## Interaction Design
+
+The current interaction model maps upper-body movement to camera navigation.
+
+- Lean left or right to move between horizontal navigation zones.
+- Move vertically to adjust camera height.
+- Automatic calibration establishes a neutral body position at the beginning of each session.
+
+Horizontal navigation is intentionally zone-based rather than continuous. This reduces instability caused by small posture variations and provides a smoother interaction experience when using webcam-based pose estimation.
+
+Vertical movement is estimated from the two-dimensional shoulder midpoint in image space rather than true three-dimensional body tracking.
+
+---
+
+## Signal Pipeline
 
 ```
-Webcam → MediaPipe PoseLandmarker → Shoulder midpoint → Baseline delta
-  → EMA smoothing (α = 0.3) → Dead zone → Zone FSM → Camera lerp
+Webcam
+    │
+MediaPipe Pose Landmarker
+    │
+Shoulder midpoint extraction
+    │
+Baseline normalization
+    │
+Exponential moving average smoothing
+    │
+Dead-zone filtering
+    │
+Finite-state zone model
+    │
+Camera interpolation
 ```
-
-The shoulder midpoint (not hands or face) was chosen for stability: the torso expresses lean more clearly than the extremities, and requires no sustained arm effort.
 
 ---
 
-## Architecture
+## Project Structure
 
 ```
 src/
 ├── components/
-│   ├── CameraController.jsx  — Zone FSM + camera lerp
-│   ├── Points.jsx            — Instanced 3D objects, botanical colour palette
-│   └── UI.jsx                — Status panel + live webcam preview
+│   ├── CameraController.jsx
+│   ├── Points.jsx
+│   └── UI.jsx
 ├── core/
-│   └── poseController.js     — MediaPipe pipeline, EMA, auto-calibration
+│   └── poseController.js
 ├── hooks/
-│   └── usePose.js            — Stable one-time init (ref pattern)
-└── App.jsx                   — Canvas, lighting, composition
+│   └── usePose.js
+└── App.jsx
 ```
 
-A few intentional design decisions worth noting:
+---
 
-- **Pose processing is vanilla JS**, isolated from React, the signal pipeline is independently testable and swappable
-- **Camera lerp is deliberately slow** (`t = 0.055`), inertia is a design value, not a performance constraint
-- **Webcam preview polls for the video element** rather than assuming it exists on mount, since MediaPipe init is async
+## Tech Stack
+
+- React
+- Vite
+- Three.js
+- React Three Fiber
+- MediaPipe Tasks Vision
+- Zustand
+
+The application runs entirely in the browser and requires no backend services.
 
 ---
 
-## Stack
-
-React · Vite · Three.js (`@react-three/fiber`) · MediaPipe Tasks Vision · Zustand
-
-No backend. Runs entirely in the browser.
-
----
-
-## Running locally
+## Running Locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Requires Chrome and webcam access. On first load, sit or stand in frame the first valid pose auto-calibrates as your neutral. Use **Recalibrate** if you reposition.
+Chrome with webcam access is recommended.
+
+When the application starts, the first detected pose is used as the neutral calibration position. Calibration can be repeated at any time using the **Recalibrate** control.
 
 ---
 
-## Limitations & next steps
+## Current Limitations
 
-This is a research prototype, not a finished product. Known constraints:
-
-- Z-axis (depth/zoom) is not yet body-controlled
-- MediaPipe performs better in Chrome than Firefox
-- The object field is unstructured, a natural next step is replacing it with real embedding projections (e.g. UMAP) to make navigation semantically meaningful
-- No multi-user support
+- Camera depth is not yet controlled through body movement.
+- Navigation is limited to upper-body pose estimation.
+- The scene contains abstract objects rather than meaningful embedding projections.
+- Performance depends on webcam quality and browser support.
 
 ---
 
-## Future directions
+## Future Work
 
-Several extensions are planned for future iterations of the prototype:
-
-- Depth-aware navigation
-Incorporating additional body landmarks and temporal signals to enable body-controlled Z-axis navigation.
-- Semantic latent spaces
-Replacing the random object field with actual embedding projections (e.g. UMAP/t-SNE representations of image or text datasets) to support meaningful spatial exploration.
-- Learned interaction models
-Exploring lightweight machine learning approaches for adaptive pose interpretation, temporal motion modelling, and user-specific calibration.
-- Embodied interaction studies
-Comparing discrete zone-based navigation against continuous control models in terms of stability, fatigue, learnability, and perceived embodiment.
+- Introduce depth-aware body navigation.
+- Replace the abstract scene with machine learning embedding projections.
+- Investigate adaptive movement interpretation using lightweight machine learning models.
+- Compare continuous and discrete navigation strategies through user studies.
+- Integrate personalised interaction models developed in the Adaptive Embodied AI project.
 
 ---
 
 ## Author
 
-Athanasia Lantouri - 
-MSc in Data Science and Machine Learning 
-[ath.lantouri@gmai.com]
+Athanasia Lantouri
+
+Applied Machine Learning | Human-Centered AI | Interactive Systems
+
+GitHub: https://github.com/lant96
